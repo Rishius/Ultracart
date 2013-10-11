@@ -129,6 +129,7 @@ function renew_page_callback(){
               </tfoot></tbody></table></div>";
 
           $payPalInfo = $uc->getPayPalInfo();
+          $page .= drupal_render(drupal_get_form('ultracart_form', $key, $firstName, $lastName, $address, $city, $state, $zip, $country, $phone, $email));
 
           if($payPalInfo->enabled){
             $payPalImgSrc = $payPalInfo->imageUrl ? $payPalInfo->imageUrl : 'images/paypal.gif';
@@ -138,7 +139,6 @@ function renew_page_callback(){
                     <input name='paypal' type='image' id='paypalImage' src='$payPalImgSrc' alt='$payPalImgAlt'/>
                     <span id='ucPayPalConjunction'><br/> - or use our secure order form below. -<br/><br/></span>
                     </div>";
-            $page .= drupal_render(drupal_get_form('ultracart_form', $key, $firstName, $lastName, $address, $city, $state, $zip, $country, $phone, $email));
           }
         }else {
           $page = '<div id="cartItemsContainerError">There has been an error looking up your serial number. You will have to go through the manual way.</div>
@@ -157,6 +157,7 @@ function renew_page_callback(){
 
 function ultracart_form($form, &$form_state, $key, $firstName, $lastName, $address, $city, $state, $zip, $country, $phone, $email){
   require_once DRUPAL_ROOT . '/includes/locale.inc';
+  $year = date('Y');
 
   $form['column_left'] = array(
     '#type' => 'fieldset',
@@ -282,14 +283,6 @@ function ultracart_form($form, &$form_state, $key, $firstName, $lastName, $addre
     '#required' => TRUE,
   );
 
-  /*$form['column_left']['date'] = array(
-    '#title' => t('Expiration Date'),
-    '#type' => 'date_popup', 
-    '#date_format' => 'j F Y', 
-    '#date_year_range' => '0:+2',
-    '#required' => TRUE,
-    '#default_value' => date('Y-m-d', time()),
-  );*/
   $form['column_left']['expirationMonth'] = array(
     '#title' => t('Expiration Month'),
     '#type' => 'select', 
@@ -307,6 +300,40 @@ function ultracart_form($form, &$form_state, $key, $firstName, $lastName, $addre
       '11' => t('11 - November'),
       '12' => t('12 - December'),
     ),
+    '#default_value' => date('m'),
+    '#required' => TRUE,
+  );
+
+  $form['column_left']['expirationYear'] = array(
+    '#title' => t('Expiration Year'),
+    '#type' => 'select', 
+    '#options' => array(
+      $year => $year,
+      $year + 1 => $year + 1,
+      $year + 2 => $year + 2,
+      $year + 3 => $year + 3,
+      $year + 4 => $year + 4,
+      $year + 5 => $year + 5,
+      $year + 6 => $year + 6,
+      $year + 7 => $year + 7,
+      $year + 8 => $year + 8,
+      $year + 9 => $year + 9,
+      $year + 10 => $year + 10,
+      $year + 11 => $year + 11,
+      $year + 12 => $year + 12,
+      $year + 13 => $year + 13,
+      $year + 14 => $year + 14,
+      $year + 15 => $year + 15,
+      $year + 16 => $year + 16,
+      $year + 17 => $year + 17,
+      $year + 18 => $year + 18,
+      $year + 19 => $year + 19,
+      $year + 20 => $year + 21,
+      $year + 21 => $year + 22,
+      $year + 22 => $year + 23,
+      $year + 23 => $year + 24,
+    ),
+    '#default_value' => date('Y'),
     '#required' => TRUE,
   );
 
@@ -330,13 +357,18 @@ function ultracart_form($form, &$form_state, $key, $firstName, $lastName, $addre
 }
 
 function ultracart_form_submit($form_id, &$form_state) {
+  $merchantId = '59362';
+  $login = 'geeklytech';
+  $password = 'turniproad539';
+  $uc = new UltraCart($merchantId, $login, $password);
+
   $serialNumber = $form_state['values']['key'];
   $title = $form_state['values']['title'];
   $firstName = $form_state['values']['firstName'];
   $lastName = $form_state['values']['lastName'];
   $company = $form_state['values']['company'];
   $address1 = $form_state['values']['address1'];
-  $address2 = $form_state['values']['add'];
+  $address2 = $form_state['values']['address2'];
   $city = $form_state['values']['city'];
   $state = $form_state['values']['state'];
   $zip = $form_state['values']['zip'];
@@ -345,13 +377,9 @@ function ultracart_form_submit($form_id, &$form_state) {
   $emailAddress = $form_state['values']['emailAddress'];
   $creditCardType = $form_state['values']['creditCardType'];
   $creditCardNumber = $form_state['values']['creditCardNumber'];
-  $creditCardExpirationDate = $form_state['values']['date'];
+  $creditCardExpirationMonth = $form_state['values']['expirationMonth'];
+  $creditCardExpirationYear = $form_state['values']['expirationYear'];
   $creditCardVerificationNumber = $form_state['values']['cardVerification'];
-
-  $merchantId = '59362';
-  $login = 'geeklytech';
-  $password = 'turniproad539';
-  $uc = new UltraCart($merchantId, $login, $password);
 
   $c = $uc->cart;
 
@@ -369,8 +397,8 @@ function ultracart_form_submit($form_id, &$form_state) {
   $c->shipToResidential = "";
   $c->shipToState = $state;
   $c->shipToTitle = $title;
-  $c->email = $email;
-  $c->emailConfirm = $email;
+  $c->email = $emailAddress;
+  $c->emailConfirm = $emailAddress;
 
   $c->billToAddress1 = $address1;
   $c->billToAddress2 = $address2;
@@ -387,18 +415,19 @@ function ultracart_form_submit($form_id, &$form_state) {
 
   $c->mailingListOptIn = "";
 
-  $c->creditCardExpirationMonth = clean("creditCardExpMonth" );
-  $c->creditCardExpirationYear = clean("creditCardExpYear" );
+  $c->creditCardExpirationMonth = $creditCardExpirationMonth;
+  $c->creditCardExpirationYear = $creditCardExpirationYear;
   $c->creditCardNumber = $creditCardNumber;
   $c->creditCardType = $creditCardType;
   $c->creditCardVerificationNumber = $creditCardVerificationNumber;
   
-
-  //$result = $uc->checkout();
+  $uc->cart->paymentMethod = 'Credit Card';
+  // checkout will update cart, so no need to do it here.
+  $result = $uc->checkout();
   if($result->wasSuccessful && $result->returnValue){
-    //drupal_set_message('Success');
-  }else {
-    //drupal_set_message('Error');
+    drupal_set_message('Thanks!');
+  }else{
+    print_r($result);
   }
 }
 
