@@ -1,6 +1,5 @@
 <?php
 require_once './UltraCart_v3.0.php';
-
 define('CURRENCY_PREFIX', '$');  // could examine request and adjust dynamically if desired.
 define('CURRENCY_SUFFIX', '');
 function currency($num){
@@ -70,10 +69,8 @@ function echo_selected($val, $cartval){
   }
 }
 
-$merchantId = 'DEMO';
-$login = 'booyah';
-$password = 'password';
-$uc = new UltraCart($merchantId, $login, $password);
+$merchantId = '59362';
+$uc = new UltraCart($merchantId);
 $result = null;
 $msg = null;
 
@@ -102,12 +99,7 @@ if ($uc->hasCart && (isset($_POST['paypal']) || isset($_POST['paypal_x']))){
 
 
 if ($uc->hasCart && (isset($_POST['checkout']) || isset($_POST['checkout_x']))){
-  echo('<pre>');
-  var_dump($uc->cart);
-  echo('<br /><br />');
   saveFields($uc);
-  var_dump($uc->cart);
-  echo('<br /><br />');
   // check for email confirmation here to speed things up.
   if($uc->cart->email != $uc->cart->emailConfirm){
     $result = new CartOperationResult();
@@ -116,14 +108,11 @@ if ($uc->hasCart && (isset($_POST['checkout']) || isset($_POST['checkout_x']))){
   } else {
     $uc->cart->paymentMethod = 'Credit Card';
     // checkout will update cart, so no need to do it here.
-    //$result = $uc->checkout();
-    $result = $uc->finalizeOrder();
-    var_dump($result);
-//    if($result->wasSuccessful && $result->returnValue){
-//      header("Location: " . $result->returnValue);
-//      exit;
-//    }
-    echo('</pre>');
+    $result = $uc->checkout();
+    if($result->wasSuccessful && $result->returnValue){
+      header("Location: " . $result->returnValue);
+      exit;
+    }
   }
 }
 
@@ -220,7 +209,7 @@ $shippingMethod = $uc->hasCart ? $uc->cart->shippingMethod : '';
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html>
 <head>
-  <title>UltraCart PHP Cart <?php echo $_COOKIE["cartId"] ?></title>
+  <title>UltraCart PHP Cart</title>
   <link href="css/cart_1.0.css" rel="stylesheet" type="text/css"/>
   <script type='text/javascript' src='js/jquery-1.4.2.min.js'></script>
   <script type='text/javascript' src='js/NumberFormat.js'></script>
@@ -310,7 +299,7 @@ $shippingMethod = $uc->hasCart ? $uc->cart->shippingMethod : '';
         params = cityStateZip;
       }
 
-      jQuery.get('./estimate_shipping.php',
+      jQuery.get('http://localhost:8888/ultracart3/estimate_shipping.php',
         params,
         function(result) {
           if (result != null) {
@@ -1018,7 +1007,9 @@ $shippingMethod = $uc->hasCart ? $uc->cart->shippingMethod : '';
 
     <br />
     <br />
-    <?php //$uc->printRawCart(); ?>
+    <?php var_dump($_COOKIE); ?>
+    <br />
+    <?php $uc->printRawCart(); ?>
 
     <div id='spacer'></div>
 

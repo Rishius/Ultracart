@@ -3,16 +3,16 @@
   require './UltraCartOrder_v0.1.php';
   set_time_limit(300);
 
-  $merchantId = 'DEMO';
-  $login = 'perry';
-  $password = 'passwordgoeshere';
+  $merchantId = '59362';
+  $login = 'geeklytech';
+  $password = 'G33klydev';
   $themeCode = '';
   $ssoOid = 'F105C77E970FD801301E3DF870051700';
   $ccOid = '49475FE5A35EE201301E3DF879051700';
 
-  $items = array('Bone', 'TSHIRT', 'PDF');
-  $quantities = array(3, 4, 5);
-  $costs = array(20.54, 2.99, 19.50);
+  $items = array('LICENSE');
+  $quantities = array(1);
+  $costs = array(1);
 
   $uc = new UltraCartOrder($merchantId, $login, $password);
 ?>

@@ -25,7 +25,7 @@ function echo_selected($val, $cartVal)
   }
 }
 
-$merchantId = 'DEMO';
+$merchantId = '59362';
 $uc = new UltraCart($merchantId);
 $result = null;
 $msg = null;

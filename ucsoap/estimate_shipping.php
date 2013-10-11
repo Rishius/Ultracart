@@ -1,7 +1,7 @@
 <?php
-  require_once './UltraCart_v1.1.php';
+  require_once './UltraCart_v3.0.php';
   header("Content-Type: application/json");
-  $merchantId = 'TOTFI';
+  $merchantId = '59362';
   $uc = new UltraCart($merchantId);
 
   if($uc->hasCart){

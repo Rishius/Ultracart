@@ -3,7 +3,7 @@
 $client = new SoapClient($url);
 //$client = new SoapClient($url, array('trace' => TRUE));  // for verbosity, like __getFunctions() below
 //print_r($client->__getFunctions());
-$merchantId = 'DEMO';
+$merchantId = '59362';
 
 // =====================================================================
 // Standard cart retrieval, which would probably be in a reusable function

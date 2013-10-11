@@ -2,7 +2,7 @@
 <body>
 <pre>
 <?php
-$merchantId = 'TOTFI';
+$merchantId = '59362';
 
   $soapClient = new SoapClient('https://secure.ultracart.com/axis/services/CheckoutAPIV3?wsdl');
   /*** Check if there's already a cart ***/

@@ -3,8 +3,8 @@
   $client = new SoapClient($url);
   //$client = new SoapClient($url, array('trace' => TRUE));  // for verbosity, like __getFunctions() below
   //print_r($client->__getFunctions());
-  $merchantId = 'DEMO';
-  $itemIds = array('Bone', 'Hunter', 'PDF');
+  $merchantId = '59362';
+  $itemIds = array('PDF');
   $itemsResult = $client->getItems($merchantId, $itemIds);
   $items = $itemsResult->items;
 ?>

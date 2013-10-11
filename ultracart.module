@@ -3,6 +3,20 @@ require_once 'ucsoap/UltraCart_v3.0.php';
 define('CURRENCY_PREFIX', '$');  // could examine request and adjust dynamically if desired.
 define('CURRENCY_SUFFIX', '');
 
+//Define variables for ultracart
+define('MERCHANT_ID', '59362');
+define('LOGIN', 'geeklytech');
+define('PASSWORD', 'turniproad539');
+
+$uc = new UltraCart(MERCHANT_ID);
+
+$subtotal = $uc->hasCart ? $uc->cart->subtotal : 0;
+$subtotalWithDiscount = $uc->hasCart ? $uc->cart->subtotalWithDiscount : 0;
+$discount = $uc->hasCart ? $uc->cart->subtotalDiscount : 0;
+$tax = $uc->hasCart ? $uc->cart->tax : 0;
+$uc->cart->shippingMethod = "Free Shipping";
+$shippingMethod = $uc->hasCart ? $uc->cart->shippingMethod : '';
+
 function currency($num){
   return CURRENCY_PREFIX . (string)$num . CURRENCY_SUFFIX;
 }
@@ -27,11 +41,6 @@ function renew_page_callback(){
 
     define('RENEWAL_PERIOD', 365);
     $server = 'https://rp0.chi-llc.com/Licensing/InternalService.asmx?wsdl';
-    $url = 'https://secure.ultracart.com/axis/services/CheckoutAPIV3?wsdl';
-    $client = new SoapClient($url);
-    $merchantId = '59362';
-
-
     $client = new SoapClient($server, array("trace" => 1,"exceptions" => 0));
     $params = array('serialNumber' => $key);
     $result = $client->GetUserInfoFromSerial($params);
@@ -60,18 +69,13 @@ function renew_page_callback(){
       $serialNumber = $user->SerialNumber;
       $isTrialLicense = $user->IsTrialLicense;
 
-      $merchantId = '59362';
-      $login = 'geeklytech';
-      $password = 'turniproad539';
-      $uc = new UltraCart($merchantId, $login, $password);
+      $uc = new UltraCart(MERCHANT_ID, LOGIN, PASSWORD);
       $result = null;
       $msg = null;
       $amount = null;
 
       $result = $uc->clearCart();
       $result = $uc->addItems(array('LICENSE'), array(1));
-
-      
    
       $params = array('userInfo' => $user, 'renewalPeriodInDays' => RENEWAL_PERIOD);
       $result = $client->RenewLicenseInfo($params);
@@ -129,16 +133,16 @@ function renew_page_callback(){
               </tfoot></tbody></table></div>";
 
           $payPalInfo = $uc->getPayPalInfo();
-          $page .= drupal_render(drupal_get_form('ultracart_form', $key, $firstName, $lastName, $address, $city, $state, $zip, $country, $phone, $email));
-
           if($payPalInfo->enabled){
             $payPalImgSrc = $payPalInfo->imageUrl ? $payPalInfo->imageUrl : 'images/paypal.gif';
             $payPalImgAlt = $payPalInfo->imageAltText ? $payPalInfo->imageAltText : 'PayPal Checkout';
 
-            $page .= "<div id='ucPayPalCheckoutSection' class='colorSubHeader'>
+            /*$page .= "<div id='ucPayPalCheckoutSection' class='colorSubHeader'>
                     <input name='paypal' type='image' id='paypalImage' src='$payPalImgSrc' alt='$payPalImgAlt'/>
                     <span id='ucPayPalConjunction'><br/> - or use our secure order form below. -<br/><br/></span>
-                    </div>";
+                    </div>";*/
+            $page .= drupal_render(drupal_get_form('ultracart_paypal_form'));
+            $page .= drupal_render(drupal_get_form('ultracart_form', $key, $firstName, $lastName, $address, $city, $state, $zip, $country, $phone, $email));
           }
         }else {
           $page = '<div id="cartItemsContainerError">There has been an error looking up your serial number. You will have to go through the manual way.</div>
@@ -357,11 +361,7 @@ function ultracart_form($form, &$form_state, $key, $firstName, $lastName, $addre
 }
 
 function ultracart_form_submit($form_id, &$form_state) {
-  $merchantId = '59362';
-  $login = 'geeklytech';
-  $password = 'turniproad539';
-  $uc = new UltraCart($merchantId, $login, $password);
-
+  $uc = new UltraCart(MERCHANT_ID, LOGIN, PASSWORD);
   $serialNumber = $form_state['values']['key'];
   $title = $form_state['values']['title'];
   $firstName = $form_state['values']['firstName'];
@@ -384,7 +384,7 @@ function ultracart_form_submit($form_id, &$form_state) {
   $c = $uc->cart;
 
   // Save Fields 
-  $c->shipToAddress1 = $address1;
+  /*$c->shipToAddress1 = $address1;
   $c->shipToAddress2 = $address2;
   $c->shipToCity = $city;
   $c->shipToCompany = $company;
@@ -394,9 +394,8 @@ function ultracart_form_submit($form_id, &$form_state) {
   $c->shipToLastName = $lastName;
   $c->shipToPhone = $phone;
   $c->shipToPostalCode = $zip;
-  $c->shipToResidential = "";
   $c->shipToState = $state;
-  $c->shipToTitle = $title;
+  $c->shipToTitle = $title;*/
   $c->email = $emailAddress;
   $c->emailConfirm = $emailAddress;
 
@@ -425,11 +424,39 @@ function ultracart_form_submit($form_id, &$form_state) {
   // checkout will update cart, so no need to do it here.
   $result = $uc->checkout();
   if($result->wasSuccessful && $result->returnValue){
-    drupal_set_message('Thanks!');
+    header("Location: " . $result->returnValue);
+    exit;
   }else{
-    print_r($result);
+    form_set_error('creditCardNumber', 'There was an error processing your application. Please check your credit card.');
   }
 }
+
+function ultracart_paypal_form($form, &$form_state){
+
+  $form['column_left']['creditcard'] = array(
+    '#markup' => '<h4>Check out with PayPal or use the form below.</h4>'
+  );
+
+  $form['column_left']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'Checkout with PayPal',
+    '#attributes' => array(
+        'class' => array('button','color')
+    )
+  );
+  return $form;
+}
+
+function ultracart_paypal_form_submit($form, &$form_state){
+  $uc = new UltraCart(MERCHANT_ID, LOGIN, PASSWORD);
+  $result = $uc->checkoutPayPal();
+  if($result->wasSuccessful && $result->returnValue){
+    header("Location: " . $result->returnValue);
+    exit;
+  }
+}
+
+
 
 function ultracart_email_element_validate($element, &$form_state, $form) {
    if (!valid_email_address($element['#value'])) {

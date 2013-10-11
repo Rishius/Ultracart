@@ -16,9 +16,9 @@
 
 
 		$result = $client->createAffiliate(array(
-			"login"=>"perry",
-			"merchantId"=>"demo",
-			"password"=>"passowrd"
+			"login"=>"geeklytech",
+			"merchantId"=>"59362",
+			"password"=>"G33klydev"
 		),array(
 			"email"=>"perry" . rand() . "@test.com",
 			"companyName"=>"TEST TIER",

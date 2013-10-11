@@ -13,9 +13,9 @@
 <body>
 
 <?php
-$merchantId = 'DEMO';
-$login = 'demo';
-$password = 'demodemo';
+$merchantId = '59362';
+$login = 'geeklytech';
+$password = 'G33klydev';
 $uc = new UltraCartLegacyAPI($merchantId, $login, $password);
 $originalItem = 'BONE';
 

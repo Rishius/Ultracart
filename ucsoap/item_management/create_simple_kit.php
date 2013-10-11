@@ -3,9 +3,9 @@
 require './UltraCartItem_v0.2.php';
 set_time_limit(300);
 
-$merchantId = 'DEMO';
-$login = 'perry';
-$password = 'demodemo';
+$merchantId = '59362';
+$login = 'geeklytech';
+$password = 'G33klydev';
 
 
 $kitItem = 'PERRYTEST';
