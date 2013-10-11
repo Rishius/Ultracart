@@ -1,0 +1,409 @@
+<?php
+require_once 'ucsoap/UltraCart_v3.0.php';
+define('CURRENCY_PREFIX', '$');  // could examine request and adjust dynamically if desired.
+define('CURRENCY_SUFFIX', '');
+
+function currency($num){
+  return CURRENCY_PREFIX . (string)$num . CURRENCY_SUFFIX;
+}
+function ultracart_menu() {
+        $items = array();
+
+        $items['renew'] = array(
+                'title' => 'Licence Renew ',
+                'description' => 'License Renewal Page',
+                'page callback' => 'renew_page_callback',
+                'page arguments' => array(),
+                'access callback' => TRUE,
+                'type' => MENU_CALLBACK,
+        );    
+        
+        return $items;
+}
+
+function renew_page_callback(){
+  if (array_key_exists('key', $_GET)) {
+    $key = $_GET['key'];
+
+    define('RENEWAL_PERIOD', 365);
+    $server = 'https://rp0.chi-llc.com/Licensing/InternalService.asmx?wsdl';
+    $url = 'https://secure.ultracart.com/axis/services/CheckoutAPIV3?wsdl';
+    $client = new SoapClient($url);
+    $merchantId = '59362';
+
+
+    $client = new SoapClient($server, array("trace" => 1,"exceptions" => 0));
+    $params = array('serialNumber' => $key);
+    $result = $client->GetUserInfoFromSerial($params);
+
+
+    $success = true;
+    if(is_soap_fault($result)) {
+      $success = false;
+    }
+   
+    if($success) {
+      $user = $result->GetUserInfoFromSerialResult;
+      //$page = '<pre>'.print_r($user, true).'</pre>';
+
+      // Retrieve all user information
+      $firstName = $user->FirstName;
+      $lastName = $user->LastName;
+      $email = $user->Email;
+      $phone = $user->Phone;
+      $address = $user->Address;
+      $city = $user->City;
+      $country = $user->County;
+      $state = $user->State;
+      $country = $user->Country;
+      $zip = $user->ZIP;
+      $serialNumber = $user->SerialNumber;
+      $isTrialLicense = $user->IsTrialLicense;
+
+      $merchantId = '59362';
+      $login = 'geeklytech';
+      $password = 'turniproad539';
+      $uc = new UltraCart($merchantId, $login, $password);
+      $result = null;
+      $msg = null;
+      $amount = null;
+
+      $result = $uc->clearCart();
+      $result = $uc->addItems(array('LICENSE'), array(1));
+
+      
+   
+      $params = array('userInfo' => $user, 'renewalPeriodInDays' => RENEWAL_PERIOD);
+      $result = $client->RenewLicenseInfo($params);
+      $success = true;
+      if(is_soap_fault($result)) {
+        $success = false;
+      }
+      if($success) {
+        // Possible results: FailedInstanceNotFound, SuccessExpirationUpdated, SuccessExpirationAndUserUpdated
+        if ($result->RenewLicenseInfoResult == 'SuccessExpirationUpdated'){
+          $page = "<div id='cartItemsContainer'>
+          <table id='cartItemsTable' summary='cart' cellspacing='0' cellpadding='0'>
+            <thead>
+            <tr>
+              <th align='left'>Item</th>
+              <th align='left'>Description</th>
+              <th align='right'>Unit Price</th>
+              <th align='right'>Amount</th>
+            </tr>
+            </thead>
+
+            <tbody>";
+
+          foreach ($uc->getItems() as $item) {
+
+            $unitCostWithDiscount = currency(sprintf("%01.2f", $item->unitCostWithDiscount));
+            $amount = currency(sprintf("%01.2f", $item->unitCostWithDiscount * $item->quantity));
+            $page .= "<tr>";
+            $page .= "<td><input type='hidden' name='item[]' value='".$item->itemId."'/>$item->itemId</td>";
+            $page .= "<td>";
+            if($item->viewUrl){
+              $page .= "<a href='" . $item->viewUrl . "'>";
+            }
+            $page .= $item->description;
+            if($item->viewUrl){
+              $page .= "</a>";
+            }
+            $page .= "</td>";
+            $page .= "<td>".$unitCostWithDiscount."</td>";
+            $page .= "<td>".$amount."</td>";
+            $page .= '</tr>';
+          }
+
+          $page .= "<tfoot>
+              <tr>
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+                <td class='subtotal_label'>
+                <div class='subtotal' id='subtotal_label2'>Subtotal: </div> 
+                </td>
+                <td>
+                <div class='subtotal' id='subtotal2'>".$amount."</div>
+                </td>
+              </tr>
+              </tfoot></tbody></table></div>";
+
+          $payPalInfo = $uc->getPayPalInfo();
+
+          if($payPalInfo->enabled){
+            $payPalImgSrc = $payPalInfo->imageUrl ? $payPalInfo->imageUrl : 'images/paypal.gif';
+            $payPalImgAlt = $payPalInfo->imageAltText ? $payPalInfo->imageAltText : 'PayPal Checkout';
+
+            $page .= "<div id='ucPayPalCheckoutSection' class='colorSubHeader'>
+                    <input name='paypal' type='image' id='paypalImage' src='$payPalImgSrc' alt='$payPalImgAlt'/>
+                    <span id='ucPayPalConjunction'><br/> - or use our secure order form below. -<br/><br/></span>
+                    </div>";
+            $page .= drupal_render(drupal_get_form('ultracart_form', $key, $firstName, $lastName, $address, $city, $state, $zip, $country, $phone, $email));
+          }
+        }else {
+          $page = '<div id="cartItemsContainerError">There has been an error looking up your serial number. You will have to go through the manual way.</div>
+                    <p><strong>LiveStorage powered by CHI-LLC</strong><br>1600 Lind Ave. SW, Suite 100<br>Renton, WA 98057<br>Toll Free 877.244.0007<br>Local 425.282.6900<br>Fax 425.282.6901<br><a href="mailto:info@chi-llc.com?subject=LiveStorage%20Website%20Inquiry">info@chi-llc.com</a></p>';
+        }
+      }
+
+      return $page;
+    }
+
+  }else{
+    print 'You do not have permission to see this page.';
+  }
+
+}
+
+function ultracart_form($form, &$form_state, $key, $firstName, $lastName, $address, $city, $state, $zip, $country, $phone, $email){
+  require_once DRUPAL_ROOT . '/includes/locale.inc';
+
+  $form['column_left'] = array(
+    '#type' => 'fieldset',
+  );
+
+  $form['column_left']['markup'] = array(
+    '#markup' => '<h4>BILLING ADDRESS</h4>'
+  );
+
+  $form['column_right'] = array(
+    '#type' => 'fieldset',
+  );
+
+  $form['column_left']['key'] = array(
+    '#title' => t('Serial Number'),
+    '#type' => 'textfield',
+    '#default_value' => $key,
+    '#attributes' => array(
+        'readonly' => TRUE
+    )
+  );
+
+  $form['column_left']['title'] = array(
+    '#title' => t('Title'),
+    '#type' => 'textfield',
+  );
+
+  $form['column_left']['firstName'] = array(
+    '#title' => t('First Name'),
+    '#type' => 'textfield',
+    '#default_value' => $firstName,
+    '#attributes' => array(
+        'readonly' => TRUE
+    )
+  );
+
+  $form['column_left']['lastName'] = array(
+    '#title' => t('Last Name'),
+    '#type' => 'textfield',
+    '#default_value' => $lastName,
+    '#attributes' => array(
+        'readonly' => TRUE
+    )
+  );
+
+  $form['column_left']['company'] = array(
+    '#title' => t('Company'),
+    '#type' => 'textfield',
+  );
+
+  $form['column_left']['address1'] = array(
+    '#title' => t('Address 1'),
+    '#type' => 'textfield',
+    '#default_value' => $address,
+    '#required' => TRUE
+  );
+
+  $form['column_left']['address2'] = array(
+    '#title' => t('Address 2'),
+    '#type' => 'textfield',
+  );
+
+  $form['column_right']['city'] = array(
+    '#title' => t('City'),
+    '#type' => 'textfield',
+    '#default_value' => $city,
+  );
+
+  $form['column_right']['state'] = array(
+    '#title' => t('State/Province/Region'),
+    '#type' => 'textfield',
+    '#default_value' => $state,
+  );
+
+  $form['column_right']['zip'] = array(
+    '#title' => t('Zip/Postal Code'),
+    '#type' => 'textfield',
+    '#default_value' => $zip,
+  );
+
+  $form['column_right']['country'] = array(
+    '#title' => t('Country'),
+    '#type' => 'select',
+    '#options' => country_get_list(),
+    '#default_value' => $country,
+  );
+
+  $form['column_right']['phone'] = array(
+    '#title' => t('Daytime phone'),
+    '#type' => 'textfield',
+    '#default_value' => $phone,
+    '#required' => TRUE
+  );
+
+  $form['column_right']['emailAddress'] = array(
+    '#title' => t('Email Address'),
+    '#type' => 'textfield',
+    '#default_value' => $email,
+    '#required' => TRUE,
+    '#element_validate' => array('ultracart_email_element_validate'),
+  );
+
+  $form['column_left']['creditcard'] = array(
+    '#markup' => '<h4>CREDIT CARD PAYMENT</h4>'
+  );
+
+  $form['column_left']['creditCardType'] = array(
+    '#title' => t('Credit Card Type'),
+    '#type' => 'select',
+    '#options' => array(
+      'Amex' => t('Amex'),
+      'Discover' => t('Discover'),
+      'Visa' => t('Visa'),
+      'MasterCard' => t('MasterCard'),
+    ),
+    '#required' => TRUE,
+    '#default_value' => 'MasterCard',
+  );
+
+  $form['column_left']['creditCardNumber'] = array(
+    '#title' => t('Credit Card #'),
+    '#type' => 'textfield',
+    '#required' => TRUE,
+  );
+
+  /*$form['column_left']['date'] = array(
+    '#title' => t('Expiration Date'),
+    '#type' => 'date_popup', 
+    '#date_format' => 'j F Y', 
+    '#date_year_range' => '0:+2',
+    '#required' => TRUE,
+    '#default_value' => date('Y-m-d', time()),
+  );*/
+  $form['column_left']['expirationMonth'] = array(
+    '#title' => t('Expiration Month'),
+    '#type' => 'select', 
+    '#options' => array(
+      '1' => t('01 - January'),
+      '2' => t('02 - February'),
+      '3' => t('03 - March'),
+      '4' => t('04 - April'),
+      '5' => t('05 - May'),
+      '6' => t('06 - June'),
+      '7' => t('07 - July'),
+      '8' => t('08 - August'),
+      '9' => t('09 - September'),
+      '10' => t('10 - October'),
+      '11' => t('11 - November'),
+      '12' => t('12 - December'),
+    ),
+    '#required' => TRUE,
+  );
+
+  $form['column_left']['cardVerification'] = array(
+    '#title' => t('Card Verification #'),
+    '#type' => 'textfield',
+    '#required' => TRUE,
+    '#prefix' => '<div class="poll-form">',
+    '#suffix' => '<a target="_blank" href="https://secure.ultracart.com/checkout/cvv2/both.jsp">help finding this number</a></div>', 
+  );
+   
+  $form['column_left']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'Checkout',
+    '#attributes' => array(
+        'class' => array('button','color')
+    )
+  );
+  
+  return $form;
+}
+
+function ultracart_form_submit($form_id, &$form_state) {
+  $serialNumber = $form_state['values']['key'];
+  $title = $form_state['values']['title'];
+  $firstName = $form_state['values']['firstName'];
+  $lastName = $form_state['values']['lastName'];
+  $company = $form_state['values']['company'];
+  $address1 = $form_state['values']['address1'];
+  $address2 = $form_state['values']['add'];
+  $city = $form_state['values']['city'];
+  $state = $form_state['values']['state'];
+  $zip = $form_state['values']['zip'];
+  $country = $form_state['values']['country'];
+  $phone = $form_state['values']['phone'];
+  $emailAddress = $form_state['values']['emailAddress'];
+  $creditCardType = $form_state['values']['creditCardType'];
+  $creditCardNumber = $form_state['values']['creditCardNumber'];
+  $creditCardExpirationDate = $form_state['values']['date'];
+  $creditCardVerificationNumber = $form_state['values']['cardVerification'];
+
+  $merchantId = '59362';
+  $login = 'geeklytech';
+  $password = 'turniproad539';
+  $uc = new UltraCart($merchantId, $login, $password);
+
+  $c = $uc->cart;
+
+  // Save Fields 
+  $c->shipToAddress1 = $address1;
+  $c->shipToAddress2 = $address2;
+  $c->shipToCity = $city;
+  $c->shipToCompany = $company;
+  $c->shipToCountry = $country;
+  $c->shipToEveningPhone = $phone;
+  $c->shipToFirstName = $firstName;
+  $c->shipToLastName = $lastName;
+  $c->shipToPhone = $phone;
+  $c->shipToPostalCode = $zip;
+  $c->shipToResidential = "";
+  $c->shipToState = $state;
+  $c->shipToTitle = $title;
+  $c->email = $email;
+  $c->emailConfirm = $email;
+
+  $c->billToAddress1 = $address1;
+  $c->billToAddress2 = $address2;
+  $c->billToCity = $city;
+  $c->billToCompany = $company;
+  $c->billToCountry = $country;
+  $c->billToDayPhone = $phone;
+  $c->billToEveningPhone = $phone;
+  $c->billToFirstName = $firstName;
+  $c->billToLastName = $lastName;
+  $c->billToPostalCode = $zip;
+  $c->billToState = $state;
+  $c->billToTitle = $title;
+
+  $c->mailingListOptIn = "";
+
+  $c->creditCardExpirationMonth = clean("creditCardExpMonth" );
+  $c->creditCardExpirationYear = clean("creditCardExpYear" );
+  $c->creditCardNumber = $creditCardNumber;
+  $c->creditCardType = $creditCardType;
+  $c->creditCardVerificationNumber = $creditCardVerificationNumber;
+  
+
+  //$result = $uc->checkout();
+  if($result->wasSuccessful && $result->returnValue){
+    //drupal_set_message('Success');
+  }else {
+    //drupal_set_message('Error');
+  }
+}
+
+function ultracart_email_element_validate($element, &$form_state, $form) {
+   if (!valid_email_address($element['#value'])) {
+     form_error($element, t('Please enter a valid email address.'));
+   }
+}

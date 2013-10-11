@@ -1,0 +1,3 @@
+name = "Ultracart"
+description = "This module integrates the ULTRACART shopping cart"
+core = "7.x"
